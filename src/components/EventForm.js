@@ -2,16 +2,16 @@ import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { auth, provider } from "../firebaseConfig";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signOut } from "firebase/auth";
 
 const apiToken = process.env.REACT_APP_API_TOKEN;
 const apiAuthtoken = process.env.REACT_APP_API_AUTHTOKEN;
 
-const EventForm = () => {
+const EventForm = ({ setIsAuth, isAuth }) => {
   const [states, setStates] = useState([]);
   const [countries, setCountries] = useState([]);
   const [cities, setCities] = useState([]);
-  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("India");
   const [selectedState, setSelectedState] = useState("");
 
   useEffect(() => {
@@ -70,7 +70,18 @@ const EventForm = () => {
     const user = await signInWithPopup(auth, provider);
     console.log(user);
     toast.success(`Welcome ${user.user.displayName}`);
+    localStorage.setItem("isAuth", true);
+    setIsAuth(true);
   };
+
+  // function to sign out with google
+  const SignOut = async () => {
+    const user = await signOut(auth);
+    toast.success(`See you soon👋`);
+    localStorage.clear();
+    setIsAuth(false);
+  };
+
   return (
     <>
       <ToastContainer
@@ -233,18 +244,31 @@ const EventForm = () => {
           <button
             onClick={(e) => {
               e.preventDefault();
-              toast.success("Event Created");
+              !isAuth? toast.error("Please Sign In") : toast.success("Event Created");
+              
             }}
-            className="bg-red-600 px-3 py-2 rounded-md my-3 text-white font-bold  hover:bg-red-400"
+            className={`bg-red-600 px-3 py-2 rounded-md my-3 text-white font-bold  hover:bg-red-400 ${
+              isAuth ? "animate-pulse" : "animate-none"
+            }`}
           >
             Create Event
           </button>
         </form>
         <button
           onClick={SignWithGoogle}
-          className="absolute bottom-10 right-10 border-2 px-3 py-2 font-bold rounded-md shadow-md border-green-500 "
+          className={`${
+            !isAuth ? "absolute" : "hidden"
+          } bottom-10 right-10 border-2 px-3 py-2 font-bold rounded-md shadow-md border-green-500 hover:border-transparent hover:bg-green-500 hover:text-white animate-bounce hover:animate-none transition-all`}
         >
           Sign In
+        </button>
+        <button
+          onClick={SignOut}
+          className={`${
+            isAuth ? "absolute" : "hidden"
+          } bottom-10 right-10 border-2 px-3 py-2 font-bold rounded-md shadow-md border-red-500 hover:border-transparent hover:bg-red-500 hover:text-white`}
+        >
+          Sign Out
         </button>
       </div>
     </>
