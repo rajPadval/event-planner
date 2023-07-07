@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { auth, provider } from "../firebaseConfig";
+import { auth, provider, db } from "../firebaseConfig";
 import { signInWithPopup, signOut } from "firebase/auth";
+import { collection, addDoc } from "firebase/firestore";
 
 const apiToken = process.env.REACT_APP_API_TOKEN;
 const apiAuthtoken = process.env.REACT_APP_API_AUTHTOKEN;
@@ -13,6 +14,8 @@ const EventForm = ({ setIsAuth, isAuth }) => {
   const [cities, setCities] = useState([]);
   const [selectedCountry, setSelectedCountry] = useState("India");
   const [selectedState, setSelectedState] = useState("");
+  const [eventData, setEventData] = useState({});
+  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
     fetchCountries();
@@ -70,6 +73,7 @@ const EventForm = ({ setIsAuth, isAuth }) => {
     const user = await signInWithPopup(auth, provider);
     console.log(user);
     toast.success(`Welcome ${user.user.displayName}`);
+    setUserEmail(user.user.email);
     localStorage.setItem("isAuth", true);
     setIsAuth(true);
   };
@@ -80,6 +84,30 @@ const EventForm = ({ setIsAuth, isAuth }) => {
     toast.success(`See you soon👋`);
     localStorage.clear();
     setIsAuth(false);
+  };
+
+  // function to get the values
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setEventData((prevEventData) => ({ ...prevEventData, [name]: value }));
+  };
+
+  // function to create the event
+  const createEvent = async (e) => {
+    e.preventDefault();
+    if (!isAuth) {
+      toast.error("Please Sign In");
+    } else {
+      console.log(eventData);
+      try {
+        const docRef = await addDoc(collection(db, userEmail), { eventData });
+        toast.success("Event Created");
+        setEventData({});
+      } catch (error) {
+        console.log(error);
+        toast.error("Some Error Occured");
+      }
+    }
   };
 
   return (
@@ -102,15 +130,17 @@ const EventForm = ({ setIsAuth, isAuth }) => {
             <div className="w-full px-3">
               <label
                 className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
-                for="grid-event-name"
+                for="eventName"
               >
                 Event Name
               </label>
               <input
                 className="appearance-none block w-full bg-gray-200 text-gray-700 border border-gray-200 rounded py-3 px-4 mb-3 leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                id="grid-event-name"
+                id="eventName"
                 type="text"
                 placeholder="Podcast with ****"
+                name="eventName"
+                onChange={handleChange}
               />
               <p className="text-gray-600 text-xs italic">
                 Make it in a crisp way
@@ -120,7 +150,7 @@ const EventForm = ({ setIsAuth, isAuth }) => {
             <div className="w-full md:w-1/2 px-3 mb-6 md:mb-0">
               <label
                 className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
-                for="grid-first-name"
+                for="firstName"
               >
                 First Name
               </label>
@@ -129,10 +159,12 @@ const EventForm = ({ setIsAuth, isAuth }) => {
                 id="grid-first-name"
                 type="text"
                 placeholder="Jane"
+                name="firstName"
+                onChange={handleChange}
               />
-              <p className="text-red-500 text-xs italic">
+              {/* <p className="text-red-500 text-xs italic">
                 Please fill out this field.
-              </p>
+              </p> */}
             </div>
             <div className="w-full md:w-1/2 px-3">
               <label
@@ -146,6 +178,8 @@ const EventForm = ({ setIsAuth, isAuth }) => {
                 id="grid-last-name"
                 type="text"
                 placeholder="Doe"
+                name="lastName"
+                onChange={handleChange}
               />
             </div>
           </div>
@@ -154,17 +188,19 @@ const EventForm = ({ setIsAuth, isAuth }) => {
             <div className="w-full md:w-1/3 px-3 mb-6 md:mb-0">
               <label
                 className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
-                for="grid-state"
+                for="country"
               >
                 Country
               </label>
               <div className="relative">
                 <select
                   className="block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
-                  id="grid-state"
+                  id="country"
                   value={selectedCountry}
+                  name="country"
                   onChange={(e) => {
                     setSelectedCountry(e.target.value);
+                    handleChange(e);
                   }}
                 >
                   {countries.map((country, i) => (
@@ -194,8 +230,10 @@ const EventForm = ({ setIsAuth, isAuth }) => {
                   className="block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                   id="grid-state"
                   value={selectedState}
+                  name="state"
                   onChange={(e) => {
                     setSelectedState(e.target.value);
+                    handleChange(e);
                   }}
                 >
                   {states.map((state, index) => (
@@ -224,6 +262,8 @@ const EventForm = ({ setIsAuth, isAuth }) => {
                 <select
                   className="block appearance-none w-full bg-gray-200 border border-gray-200 text-gray-700 py-3 px-4 pr-8 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500"
                   id="grid-state"
+                  name="city"
+                  onChange={handleChange}
                 >
                   {cities.map((city, index) => (
                     <option key={index}>{city.city_name}</option>
@@ -241,13 +281,53 @@ const EventForm = ({ setIsAuth, isAuth }) => {
               </div>
             </div>
           </div>
+          <div className="flex flex-wrap -mx-3 mt-5">
+            <div className="w-full  md:w-1/3  px-3 mb-6 md:mb-0">
+              <label
+                className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+                for="date"
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                name="date"
+                onChange={handleChange}
+                className="outline-none text-gray-700 bg-gray-200 px-3 py-2 rounded-md focus:bg-white focus:border-gray-500 border"
+              />
+            </div>
+            <div className="w-full md:w-1/3 px-3 mb-6 md:mb-0">
+              <label
+                className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+                for="fTime"
+              >
+                From Time
+              </label>
+              <input
+                type="time"
+                name="fTime"
+                onChange={handleChange}
+                className="outline-none text-gray-700 bg-gray-200 px-3 py-2 rounded-md focus:bg-white focus:border-gray-500 border"
+              />
+            </div>
+            <div className="w-full md:w-1/3 px-3 mb-6 md:mb-0">
+              <label
+                className="block uppercase tracking-wide text-gray-700 text-xs font-bold mb-2"
+                for="tTime"
+              >
+                To Time
+              </label>
+              <input
+                type="time"
+                name="tTime"
+                onChange={handleChange}
+                className="outline-none text-gray-700 bg-gray-200 px-3 py-2 rounded-md focus:bg-white focus:border-gray-500 border"
+              />
+            </div>
+          </div>
           <button
-            onClick={(e) => {
-              e.preventDefault();
-              !isAuth? toast.error("Please Sign In") : toast.success("Event Created");
-              
-            }}
-            className={`bg-red-600 px-3 py-2 rounded-md my-3 text-white font-bold  hover:bg-red-400 ${
+            onClick={createEvent}
+            className={`bg-red-600 px-3 py-2 rounded-md my-5 text-white font-bold  hover:bg-red-400 ${
               isAuth ? "animate-pulse" : "animate-none"
             }`}
           >
